@@ -2,11 +2,11 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FindMyID GPS V2</title>
+  <title>FindMyID GPS V3</title>
 
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       text-align: center;
       padding: 25px;
       background: #111;
@@ -14,7 +14,7 @@
     }
 
     .box {
-      max-width: 400px;
+      max-width: 420px;
       margin: auto;
       padding: 25px;
       border: 1px solid #555;
@@ -26,10 +26,29 @@
       padding: 14px 20px;
       margin: 10px;
       border-radius: 10px;
+      cursor: pointer;
     }
 
     #status {
       margin-top: 20px;
+      line-height: 1.7;
+    }
+
+    #deviceData {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #444;
+      border-radius: 12px;
+      text-align: left;
+      line-height: 1.8;
+    }
+
+    .online {
+      color: #4cff88;
+    }
+
+    .error {
+      color: #ff7070;
     }
   </style>
 </head>
@@ -39,17 +58,17 @@
 <div class="box">
 
   <h1>FindMyID</h1>
-
   <hr>
-
   <h2>ROHAN'S ID</h2>
 
-  <p id="status">
-    Location not captured
-  </p>
+  <p id="status">Connecting to FindMyID...</p>
 
-  <button onclick="getLocation()">
-    📍 GET MY LOCATION
+  <div id="deviceData">
+    Loading device data...
+  </div>
+
+  <button onclick="refreshDevice()">
+    🔄 REFRESH LOCATION
   </button>
 
   <br>
@@ -62,104 +81,108 @@
 
 <script>
 
+const SUPABASE_URL = "https://zsvgszustevxolgbtvpy.supabase.co";
+const SUPABASE_KEY = "sb_publishable_sSroAOT_nHFm9glDD3Zc4w_elGaE8bG";
+
 let latitude = null;
 let longitude = null;
 
-function getLocation() {
+async function refreshDevice() {
 
-  const status =
-    document.getElementById("status");
+  const status = document.getElementById("status");
+  const deviceData = document.getElementById("deviceData");
 
-  if (!navigator.geolocation) {
+  status.innerHTML = "🔄 Getting latest device location...";
+  status.className = "";
+
+  try {
+
+    const response = await fetch(
+      SUPABASE_URL +
+      "/rest/v1/findmyid_devices?device_name=eq.ROHAN_ID&order=last_seen.desc&limit=1",
+      {
+        method: "GET",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Supabase HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!data.length) {
+      latitude = null;
+      longitude = null;
+      status.innerHTML = "⚠️ No device data found.";
+      status.className = "error";
+      deviceData.innerHTML = "No ROHAN_ID record is available yet.";
+      return;
+    }
+
+    const device = data[0];
+
+    latitude = Number(device.latitude);
+    longitude = Number(device.longitude);
+
+    const accuracy = device.accuracy ?? "Unknown";
+    const rssi = device.rssi ?? "Unknown";
+    const lastSeen = device.last_seen
+      ? new Date(device.last_seen).toLocaleString()
+      : "Unknown";
+    const deviceStatus = device.status || "unknown";
 
     status.innerHTML =
-      "GPS is not supported by this browser.";
+      "📍 Latest location found<br>" +
+      "Status: " + deviceStatus;
+    status.className = deviceStatus === "online" ? "online" : "";
 
-    return;
+    deviceData.innerHTML =
+      "<strong>Device:</strong> " + device.device_name + "<br>" +
+      "<strong>Latitude:</strong> " + latitude + "<br>" +
+      "<strong>Longitude:</strong> " + longitude + "<br>" +
+      "<strong>Accuracy:</strong> " + accuracy + " meters<br>" +
+      "<strong>RSSI:</strong> " + rssi + " dBm<br>" +
+      "<strong>Last Seen:</strong> " + lastSeen;
+
+  } catch (error) {
+
+    console.error(error);
+    status.innerHTML = "❌ Could not load device location.";
+    status.className = "error";
+    deviceData.innerHTML =
+      "Error: " + error.message;
   }
-
-  status.innerHTML =
-    "Getting location...";
-
-  navigator.geolocation.getCurrentPosition(
-
-    function(position) {
-
-      latitude =
-        position.coords.latitude;
-
-      longitude =
-        position.coords.longitude;
-
-      const accuracy =
-        Math.round(
-          position.coords.accuracy
-        );
-
-      status.innerHTML =
-        "📍 Location captured<br><br>" +
-        "Accuracy: " +
-        accuracy +
-        " meters";
-
-      console.log(
-        "Latitude:",
-        latitude
-      );
-
-      console.log(
-        "Longitude:",
-        longitude
-      );
-
-    },
-
-    function(error) {
-
-      status.innerHTML =
-        "GPS Error: " +
-        error.message;
-
-    },
-
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0
-    }
-  );
 }
 
 function openMap() {
 
   if (
     latitude === null ||
-    longitude === null
+    longitude === null ||
+    Number.isNaN(latitude) ||
+    Number.isNaN(longitude)
   ) {
-
-    alert(
-      "First press GET MY LOCATION."
-    );
-
+    alert("First load the latest device location.");
     return;
   }
 
   const url =
     "https://www.openstreetmap.org/" +
-    "?mlat=" +
-    latitude +
-    "&mlon=" +
-    longitude +
-    "#map=18/" +
-    latitude +
-    "/" +
-    longitude;
+    "?mlat=" + latitude +
+    "&mlon=" + longitude +
+    "#map=18/" + latitude + "/" + longitude;
 
-  window.open(
-    url,
-    "_blank"
-  );
+  window.open(url, "_blank");
 }
+
+refreshDevice();
+
+setInterval(refreshDevice, 30000);
 
 </script>
 
