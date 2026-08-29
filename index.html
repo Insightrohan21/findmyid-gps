@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FindMyID GPS</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      padding: 25px;
+      background: #111;
+      color: white;
+    }
+
+    .box {
+      max-width: 400px;
+      margin: auto;
+      padding: 25px;
+      border: 1px solid #555;
+      border-radius: 16px;
+    }
+
+    button {
+      font-size: 18px;
+      padding: 14px 20px;
+      margin: 10px;
+      border-radius: 10px;
+    }
+
+    #status {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h1>FindMyID</h1>
+
+  <hr>
+
+  <h2>ROHAN'S ID</h2>
+
+  <p id="status">
+    Location not captured
+  </p>
+
+  <button onclick="getLocation()">
+    📍 GET MY LOCATION
+  </button>
+
+  <br>
+
+  <button onclick="openMap()">
+    🗺️ OPEN MAP
+  </button>
+
+</div>
+
+<script>
+
+let latitude = null;
+let longitude = null;
+
+function getLocation() {
+
+  const status =
+    document.getElementById("status");
+
+  if (!navigator.geolocation) {
+
+    status.innerHTML =
+      "GPS is not supported by this browser.";
+
+    return;
+  }
+
+  status.innerHTML =
+    "Getting location...";
+
+  navigator.geolocation.getCurrentPosition(
+
+    function(position) {
+
+      latitude =
+        position.coords.latitude;
+
+      longitude =
+        position.coords.longitude;
+
+      const accuracy =
+        Math.round(
+          position.coords.accuracy
+        );
+
+      status.innerHTML =
+        "📍 Location captured<br><br>" +
+        "Accuracy: " +
+        accuracy +
+        " meters";
+
+      console.log(
+        "Latitude:",
+        latitude
+      );
+
+      console.log(
+        "Longitude:",
+        longitude
+      );
+
+    },
+
+    function(error) {
+
+      status.innerHTML =
+        "GPS Error: " +
+        error.message;
+
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
+    }
+  );
+}
+
+function openMap() {
+
+  if (
+    latitude === null ||
+    longitude === null
+  ) {
+
+    alert(
+      "First press GET MY LOCATION."
+    );
+
+    return;
+  }
+
+  const url =
+    "https://www.openstreetmap.org/" +
+    "?mlat=" +
+    latitude +
+    "&mlon=" +
+    longitude +
+    "#map=18/" +
+    latitude +
+    "/" +
+    longitude;
+
+  window.open(
+    url,
+    "_blank"
+  );
+}
+
+</script>
+
+</body>
+</html>
